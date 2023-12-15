@@ -3,7 +3,7 @@ use std::fs::read_to_string;
 use std::path::Path;
 
 fn create_word_to_num_mapping() -> IndexMap<String, String> {
-    return indexmap! {
+    let mut map = indexmap! {
         "one".to_owned() => "1".to_owned(),
         "two".to_owned() => "2".to_owned(),
         "three".to_owned() => "3".to_owned(),
@@ -14,6 +14,11 @@ fn create_word_to_num_mapping() -> IndexMap<String, String> {
         "eight".to_owned() => "8".to_owned(),
         "nine".to_owned() => "9".to_owned(),
     };
+
+    for num in 1..10 {
+        map.insert(num.to_string(), num.to_string());
+    }
+    return map;
 }
 
 pub fn run() {
@@ -24,73 +29,42 @@ pub fn run() {
     // Create word to mapping
     let map = create_word_to_num_mapping();
 
-    let mut numbers_to_sum: Vec<String> = vec![];
-
-    // Iterate and change all occurences of word -> number
-    for line in file_content.lines() {
-        print!("Line: {}, ", line);
-        let mut word = line.to_owned();
-
-        loop {
-            let mut index_map: IndexMap<usize, String> = IndexMap::new();
-
-            for (_word, _) in &map {
-                match word.find(_word) {
-                    Some(position) => {
-                        index_map.insert(position, _word.to_owned());
-                    }
-                    None => {}
-                }
-            }
-
-            let mut keys: Vec<usize> = index_map.keys().cloned().collect();
-            if keys.len() <= 0 {
-                break;
-            }
-            keys.sort();
-
-            // Sort by position and replace all occurences...
-            // This won't match something that was partially replaced before
-            for position in keys.iter() {
-                let value = index_map.get(position).unwrap();
-                word = word.replace(value, map.get(value).unwrap());
-            }
-        }
-
-        print!(" -> {}", word);
-
-
-        let mut first_number: Option<char> = None;
-        let mut second_number: Option<char> = None;
-
-        for position in 0..word.len() {
-            match word.chars().nth(position) {
-                Some(number) if number.is_digit(10) => {
-                    if first_number == None {
-                        first_number = Some(number);
-                        second_number = Some(number);
-                    } else {
-                        second_number = Some(number);
-                    }
-                }
-                Some(_) | None => {}
-            }
-        }
-
-        if first_number == None || second_number == None {
-            println!("Did not find numbers for '{}'", word);
-            continue;
-        }
-        numbers_to_sum
-            .push(format!("{}{}", first_number.unwrap(), second_number.unwrap()).to_string());
-        println!(" -found-> {}{}", first_number.unwrap(), second_number.unwrap());
-    }
-
     let mut final_sum: u64 = 0;
 
-    // Sum them all up
-    for number in numbers_to_sum {
+    // Iterate and change all occurences of word -> number
+    for word in file_content.lines() {
+        print!("Line: {}, ", word);
+
+        let mut index_map: IndexMap<usize, String> = IndexMap::new();
+        let mut keys: Vec<usize> = index_map.keys().cloned().collect();
+
+        for (_word, _) in &map {
+            let _ = word
+                .match_indices(_word)
+                .map(|(index, _)| {
+                    index_map.insert(index.to_owned(), _word.to_owned());
+                    index
+                })
+                .collect::<Vec<usize>>();
+        }
+
+        keys.sort();
+
+        let (first_position, second_position): (&usize, &usize) = match (keys.first(), keys.last())
+        {
+            (Some(first), Some(last)) => (first, last),
+            _ => continue,
+        };
+
+        let first_number: Option<&String> = map.get(index_map.get(first_position).unwrap());
+        let second_number: Option<&String> = map.get(index_map.get(second_position).unwrap());
+
+        let number = format!("{}{}", first_number.unwrap(), second_number.unwrap()).to_string();
+
+        println!(" -found-> {}", number);
+
         let number = number.parse::<u64>().unwrap();
+
         final_sum += number;
     }
 
